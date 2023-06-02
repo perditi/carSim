@@ -20,9 +20,10 @@ PASS_TIME = 3#say it takes 3 seconds for a car to leave the intersection
 
 
 class Car:
-    def __init__(self):
+    def __init__(self, interference):#interference boolean, see if 2 cars can go at once
         self.direction = DIRECTIONS[GEN.integers(0,3)]#random direction
         self.arrivalTime = time.localtime()
+        self.interference = interference
     def __eq__(self, other):
         return (self.arrivalTime == other.arrivalTime)
     def __ne__(self, other):
@@ -43,16 +44,23 @@ class Road:
         self.q = deque()
         
     def put(self, n):
+        print("does this run?")
+        time.sleep(GEN.integers(0, PER_SECONDS+1))
+        print("lmao")
         self.q.append(Car())
-        time.sleep(PER_SECONDS/(n))
+        print("yes it does")
+
             
     def pop(self):
-        time.sleep(PASS_TIME)
+        if interference:
+            time.sleep(PASS_TIME)
         return self.q.popleft()
     
     def peek(self):
-        temp = self.q.popleft()
-        self.q.appendleft(temp)
+        temp = None
+        if (len(self.q)) > 0:
+            temp = self.q.popleft()
+            self.q.appendleft(temp)
         return temp
     
     def __str__(self):
@@ -66,23 +74,38 @@ class Road:
                 string = string + temp.__str__() + "\n"
                 self.q.append(temp)
         return string
+
+class Intersection:
+    def __init__(self):
+        self.
         
             
 
 ROADS = np.array([Road(), Road(), Road(), Road()])#N E S W
 
 numCars = GEN.poisson(LAMBDA)
+print("Number of cars entering the intersection: ", numCars)
 threads = deque()
 print(time.strftime("%H:%M:%S", time.localtime()))
 for i in range(numCars):
     threads.append(threading.Thread(target=ROADS[GEN.integers(0,4)].put, args=[numCars]))
-    print("chk1")
+    #print("chk1")
+
+
+for i in range(len(threads)):
+    #print("chk2")
+    temp = threads.popleft()
+    #print("chk3")
+    temp.start()
+    threads.append(temp)
+
+timer = threading.Thread(target=time.sleep(PER_SECONDS))
+timer.start()
+threads.append(timer)
     
 for i in range(len(threads)):
-    print("chk2")
     temp = threads.popleft()
-    print("chk3")
-    temp.run()
+    temp.join()
     print("chk4")
 #i tried to use threads to do some concurrent stuff, because technically cars could arrive
 #at the same time. the concurrency isn't working rn, but the cars still arrive so
@@ -93,3 +116,9 @@ print(ROADS[0])
 print(ROADS[1])
 print(ROADS[2])
 print(ROADS[3])
+
+front = np.array([ROADS[0].peek(), ROADS[1].peek(), ROADS[2].peek(), ROADS[3].peek()])
+print(front[0])
+print(front[1])
+print(front[2])
+print(front[3])
