@@ -6,15 +6,18 @@ Created on Fri Jun  2 10:37:01 2023
 """
 
 import numpy as np
-import queue as q
+from collections import deque
 import time
+import threading
 
 DIRECTIONS = np.array(["left", "straight", "right"])
 GEN = np.random.default_rng(None)#use GEN.poisson(1)
-#lambda is average number of cars per period of time -- how long do i want??
-#five seconds isn't bad but how fast are these fucking cars going :skull:
+#lambda is average number of cars per period of time
+LAMBDA = 5
+PER_SECONDS = 30#say the period of time is 30 seconds
+PASS_TIME = 3#say it takes 3 seconds for a car to leave the intersection
 
-PER_SECONDS = 5#say the period of time is 30 seconds
+
 
 class Car:
     def __init__(self):
@@ -26,53 +29,67 @@ class Car:
         return not (self == other)
     def __lt__(self, other):
         return (self.arrivalTime < other.arrivalTime)
-    def __le__(self, other):
-        return ((self == other) or (self < other))
     def __gt__(self, other):
-        return not (self < other)
+        return (not (self < other)) and (self != other)
+    def __le__(self, other):
+        return not (self > other)
     def __ge__(self, other):
-        return ((self == other) or (not (self < other)))
+        return not (self < other)
     def __str__(self):
         return f"Turning {self.direction}, arrived at " + time.strftime("%H:%M:%S", self.arrivalTime)
     
 class Road:
     def __init__(self):
-        self.q = q.Queue()
+        self.q = deque()
         
     def put(self, n):
-        for i in range(n):
-            self.q.put(Car())
-            if i < n:
-                time.sleep(PER_SECONDS/(n-1))
+        self.q.append(Car())
+        time.sleep(PER_SECONDS/(n))
             
     def pop(self):
-        return self.q.get()
+        time.sleep(PASS_TIME)
+        return self.q.popleft()
+    
+    def peek(self):
+        temp = self.q.popleft()
+        self.q.appendleft(temp)
+        return temp
     
     def __str__(self):
-        tempQ = q.Queue()
         string = ""
-        r = self.q.qsize()
-        for i in range(r):
-            temp = self.q.get()
-            string = string + temp.__str__() + "\n"
-            tempQ.put(temp)
-        for i in range(r):
-            self.q.put(tempQ.get())
+        r = len(self.q)
+        if r == 0:
+            string = "Road is empty\n"
+        else:
+            for i in range(r):
+                temp = self.q.popleft()
+                string = string + temp.__str__() + "\n"
+                self.q.append(temp)
         return string
         
             
 
 ROADS = np.array([Road(), Road(), Road(), Road()])#N E S W
 
+numCars = GEN.poisson(LAMBDA)
+threads = deque()
+print(time.strftime("%H:%M:%S", time.localtime()))
+for i in range(numCars):
+    threads.append(threading.Thread(target=ROADS[GEN.integers(0,4)].put, args=[numCars]))
+    print("chk1")
+    
+for i in range(len(threads)):
+    print("chk2")
+    temp = threads.popleft()
+    print("chk3")
+    temp.run()
+    print("chk4")
+#i tried to use threads to do some concurrent stuff, because technically cars could arrive
+#at the same time. the concurrency isn't working rn, but the cars still arrive so
+#this will work for now
 
-ROADS[0].put(2)
+print(time.strftime("%H:%M:%S", time.localtime()))
 print(ROADS[0])
-test1 = ROADS[0].pop()
-test2 = ROADS[0].pop()
-print(test1)
-print(test2)
-print(test1 < test2)
-print(test2 > test1)
-print(test1 != test2)
-
-
+print(ROADS[1])
+print(ROADS[2])
+print(ROADS[3])
