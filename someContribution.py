@@ -135,7 +135,9 @@ class Intersection:
                             going.append(r)
             thr = deque()
             for i in range(len(going)):
-                thr.append(threading.Thread(target=self.remove, args=[going.popleft()]))
+                t1 = threading.Thread(target=self.remove, args=[going.popleft()])
+                t1.start()
+                thr.append(t1)
             for i in range(len(thr)):
                 temp = thr.popleft()
                 temp.join()
