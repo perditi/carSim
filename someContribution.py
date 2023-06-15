@@ -10,7 +10,7 @@ from collections import deque
 import time
 import threading
 
-DIRECTIONS = np.array(["left", "straight", "right"])
+DIRECTIONS = np.array(["north", "east", "south", "west"])
 GEN = np.random.default_rng(None)#use GEN.poisson(1)
 #lambda is average number of cars per period of time
 LAMBDA = 5
@@ -20,14 +20,19 @@ PASS_TIME = 3#say it takes 3 seconds for a car to leave the intersection
 
 
 class Car:
-    def __init__(self):
-        self.direction = DIRECTIONS[GEN.integers(0,3)]#random direction
+    def __init__(self, road):
+        self.road = road
+        self.destination = GEN.integers(0,4)#random direction
         self.arrivalTime = time.localtime()
     def __eq__(self, other):
+        if other == None:
+            return False
         return (self.arrivalTime == other.arrivalTime)
     def __ne__(self, other):
         return not (self == other)
     def __lt__(self, other):
+        if other == None:
+            return False
         return (self.arrivalTime < other.arrivalTime)
     def __gt__(self, other):
         return (not (self < other)) and (self != other)
@@ -36,23 +41,24 @@ class Car:
     def __ge__(self, other):
         return not (self < other)
     def __str__(self):
-        return f"Turning {self.direction}, arrived at " + time.strftime("%H:%M:%S", self.arrivalTime)
+        direction = DIRECTIONS[self.destination]
+        coming = DIRECTIONS[self.road]
+        return f"From the {coming} Road, going {direction}, arrived at " + time.strftime("%H:%M:%S", self.arrivalTime)
     
 class Road:
-    def __init__(self):
+    def __init__(self, road):
         self.q = deque()
+        self.road = road
         
-    def put(self, n):
-        print("does this run?")
+    def put(self):
+        print("put called successfully")
         time.sleep(GEN.integers(0, PER_SECONDS+1))
-        print("lmao")
-        self.q.append(Car())
-        print("yes it does")
+        temp = Car(self.road)
+        self.q.append(temp)
+        print(temp)
 
             
-    def pop(self, interference):#interference boolean, see if 2 cars can go at once
-        if interference:
-            time.sleep(PASS_TIME)
+    def pop(self):
         return self.q.popleft()
     
     def peek(self):
@@ -73,72 +79,145 @@ class Road:
                 string = string + temp.__str__() + "\n"
                 self.q.append(temp)
         return string
-
-class Label:
-    def __init__(self, car, label):#label which road it came from
-        self.label = label#for ordering purposes
-        self.car = car
-        self.front = None
         
 class Intersection:
-    def __init__(self, ROADS):
+    def __init__(self, ROADS, startTime):
         self.o = deque()#the order in which cars will go
         self.ROADS = ROADS
+        self.stop = False
+        
+    def sleep(self, num):
+        time.sleep(num)
+        self.stop = True
         
     def fill(self):
-        self.front = np.array([Label(self.ROADS[0].peek(), 0), Label(self.ROADS[1].peek(), 1),
-                               Label(self.ROADS[2].peek(), 2), Label(self.ROADS[3].peek(), 3)])
-        while (len(self.ROADS[0]) != 0 or len(self.ROADS[1]) != 0 or len(self.ROADS[2]) != 0  or len(self.ROADS[3]) != 0 ):
-            if len(self.ROADS[0]) != 0 and self.front[0].car == None:
-                self.front[0] = Label(self.ROADS[0].peek(), 0)
-            if len(self.ROADS[1]) != 0 and self.front[1].car == None:
-                self.front[1] = Label(self.ROADS[1].peek(), 1)
-            if len(self.ROADS[2]) != 0 and self.front[2].car == None:
-                self.front[2] = Label(self.ROADS[2].peek(), 2)
-            if len(self.ROADS[3]) != 0 and self.front[3].car == None:
-                self.front[3] = Label(self.ROADS[3].peek(), 3)
+        self.front = np.array([self.ROADS[0].peek(), self.ROADS[1].peek(),
+                               self.ROADS[2].peek(), self.ROADS[3].peek()])
+        #print("start of fill")
+        while (not self.stop or (len(self.ROADS[0].q) != 0 or len(self.ROADS[1].q) != 0 or len(self.ROADS[2].q) != 0  or len(self.ROADS[3].q) != 0 )):
+            if len(self.ROADS[0].q) != 0 and self.front[0] == None:
+                self.front[0] = self.ROADS[0].peek()
+            if len(self.ROADS[1].q) != 0 and self.front[1] == None:
+                self.front[1] = self.ROADS[1].peek()
+            if len(self.ROADS[2].q) != 0 and self.front[2] == None:
+                self.front[2] = self.ROADS[2].peek()
+            if len(self.ROADS[3].q) != 0 and self.front[3] == None:
+                self.front[3] = self.ROADS[3].peek()
+            #print(self.front)
+            self.sort(self.front)
+            #print("sorted")
+            #print(self.front)
+            goThread = threading.Thread(target=self.go)
+            #print("running goThread")
+            goThread.run()
+            #print("presleep")
+            time.sleep(1)
+            #print("postsleep")
+        #print("end of fill")
         
-    def order(self):
-        while (self.front[0].car != None or self.front[1].car != None or self.front[2].car != None or self.front[3].car != None):
-            for i in range(len(self.front) - 1):
-                #sort in place, order all four cars
-                return None
+    def go(self):
+        #print("start go")
+        going = deque()
+        if self.front[0] != None:
+            going.append(0)
+            first = self.front[0]
+            firstFrom = self.shift(first.road, first.road)
+            firstTo = self.shift(first.destination, first.road)
+            for r in range(len(self.front)):
+                if self.front[r] != None:
+                    compareFrom = self.shift(self.front[r].road, first.road)
+                    compareTo = self.shift(self.front[r].destination, first.road)
+                    if (compareFrom > firstFrom and compareTo != firstTo):
+                        if (compareFrom > firstFrom and compareFrom <= firstTo):
+                            if (compareTo >= firstFrom and compareTo < firstTo):
+                                going.append(r)
+                        elif (compareFrom > firstTo and compareTo > firstTo):
+                            going.append(r)
+            thr = deque()
+            for i in range(len(going)):
+                thr.append(threading.Thread(target=self.remove, args=[going.popleft()]))
+            for i in range(len(thr)):
+                temp = thr.popleft()
+                temp.join()
             
-            
+        #print("end go")
+        
+    def shift(self, num, s):
+        temp = num - s
+        if temp < 0:
+            temp += len(self.ROADS)
+        return temp 
+                    
+    def remove(self, frontI):
+        road = self.front[frontI].road
+        leaving = self.ROADS[road].pop()
+        self.front[frontI] = None
+        startTime = time.mktime(leaving.arrivalTime)
+        endTime = time.mktime(time.localtime())
+        waitingTime = endTime - startTime
+        print("A car from the", DIRECTIONS[leaving.road], "road has exited the intersection heading", DIRECTIONS[leaving.destination], ", total waiting time:", waitingTime, "seconds.")
+        
+    def sort(self, a):
+        num = len(a)
+        for i in range(num):
+            smol = i
+            for j in range(i + 1, num):
+                if a[smol] == None:
+                    smol = j
+                elif a[j] == None:
+                    continue
+                elif a[j] < a[smol]:
+                    smol = j
+            temp = a[i]
+            a[i] = a[smol]
+            a[smol] = temp
+        return a
         
 
-intersection = Intersection(np.array([Road(), Road(), Road(), Road()]))#N E S W
+
+
+
+intersection = Intersection(np.array([Road(0), Road(1), Road(2), Road(3)]), time.localtime())#N E S W
 
 numCars = GEN.poisson(LAMBDA)
+
+#FOR TESTING===========================================================================
+numCars = 7
+
+
 print("Number of cars entering the intersection: ", numCars)
 threads = deque()
 print(time.strftime("%H:%M:%S", time.localtime()))
+
+
+
 for i in range(numCars):
-    threads.append(threading.Thread(target=intersection.ROADS[GEN.integers(0,4)].put, args=[numCars]))
-    #print("chk1")
+    threads.append(threading.Thread(target=intersection.ROADS[GEN.integers(0,4)].put))
 
 
 for i in range(len(threads)):
-    #print("chk2")
     temp = threads.popleft()
-    #print("chk3")
     temp.start()
     threads.append(temp)
+    
 
-timer = threading.Thread(target=time.sleep(PER_SECONDS))
+fillLoop = threading.Thread(target=intersection.fill)
+fillLoop2 = threading.Thread(target=fillLoop.run)
+fillLoop2.start()
+threads.append(fillLoop2)
+
+#print("timer moment")
+timer = threading.Thread(target=intersection.sleep(PER_SECONDS))
 timer.start()
 threads.append(timer)
-    
+
+
+
 for i in range(len(threads)):
     temp = threads.popleft()
     temp.join()
-    print("chk4")
-#i tried to use threads to do some concurrent stuff, because technically cars could arrive
-#at the same time. the concurrency isn't working rn, but the cars still arrive so
-#this will work for now
+    #print("chk4")
 
 print(time.strftime("%H:%M:%S", time.localtime()))
-print("North Road:\n", intersection.ROADS[0])
-print("East Road:\n", intersection.ROADS[1])
-print("South Road:\n", intersection.ROADS[2])
-print("West Road:\n", intersection.ROADS[3])
+#for i in range(4):
+#    print(DIRECTIONS[intersection.ROADS[i].road], "Road:\n", intersection.ROADS[i])
