@@ -19,6 +19,14 @@ def run(num=10,modifier=""):
     E has waiting times for emergency cars specifically
     
     see dualSim in newNewNEWSim.py for details on the simulation
+    
+    .csv files are formatted like so:
+        Statistics for road 0
+        Statistics for road 1
+        Statistics for road 2
+        Statistics for road 3
+        Statistics for road 4
+    Repeating per simulation (num times)
     """
     
     start = time.localtime()#for tracking time elapsed
@@ -72,7 +80,14 @@ def calculate(modifier=""):
     return t
 
 def calculateToFile(modifier=""):
-    """Same as calculate() but writes to a .csv instead of returning"""
+    """Same as calculate() but writes to a .csv instead of returning
+    
+    .csv file is formatted as so:
+        Statistics for means from Red Light simulation (all cars)
+        Statistics for means from Red Light simulation (emergency cars)
+        Statistics for means from Julien simulation (all cars)
+        Statistics for means from Julien simulation (emergency cars)
+    """
     
     LA = w.calculateFromFile(f"Data_RedLight_ALL_{modifier}")
     LE = w.calculateFromFile(f"Data_RedLight_E_{modifier}")

@@ -81,7 +81,7 @@ PRIORITY_WEIGHT = 1000
 class Car:
     #if a road/destination isn't specified, picks random ones
     def __init__(self, road=None, destination=None, emergency=False):
-        """A car is initialized with an entry road and a destination road (0-4).
+        """A car is initialized with an entry road and a destination road (0-2).
         If either one is not given, it is randomly chosen from a uniform distribution.
         A car cannot go to the same road it came from.
         Additionally, a car can be an emergency car. If unspecified, it is default NOT an emergency car.
@@ -144,6 +144,7 @@ class Intersection:
         """Inserts a car into a road in the intersection. Also returns it"""
         tempCar = Car(road, destination, emergency)#if road, destination == None, randomizes
         i = tempCar.road
+        #takes the car's entry road and sorts it into the intersection based on its path
         if i == 0:
             if tempCar.destination == 1:
                 i = 1
