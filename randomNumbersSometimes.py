@@ -15,7 +15,6 @@ import random
 POSSIBILITIES = ((3,0.70),(5,0.20),(10,0.10))#assume percentages add up to 1
 #if you want to add an outcome, add a (x,y) to this list, where
 #x is the outcome you want, and y is its probability (between 0 and 1)
-POSSIBILITIES = ((0,0.50),(1,0.20),(2,0.30))
 
 
 BOUNDS = []
